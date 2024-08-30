@@ -21,7 +21,7 @@ public class Counter : MonoBehaviour
         if(other.gameObject.CompareTag("Coin"))
         {
             count += 1;
-            counterText.text = "Coins : " + count;
+            counterText.text = "" + count;
             Destroy(other.gameObject);
         }
     }

@@ -11,11 +11,15 @@ public class PlayerController : MonoBehaviour
     private AudioSource playerAudio;
     public ParticleSystem explosionEffect;
     public ParticleSystem trailEffect;
-
     private BoxCollider boxCollider;
-
     private Animator playerAnimator;
-    public float jumpForce =700f;
+
+    private Vector2 startTouchPosition, endTouchPosition;
+
+    private float swipeThreshold = 50f;
+    private bool isTouching = false;
+
+    public float jumpForce;
     public float gravityMultiplier=2;
     public bool isOnGround=true;
     public bool isRolling=false;
@@ -33,9 +37,10 @@ public class PlayerController : MonoBehaviour
         gameManager=GameObject.Find("Game Manager").GetComponent<GameManager>();
         playerRb=GetComponent<Rigidbody>();
         Physics.gravity *= gravityMultiplier;
+        jumpForce = 700f;
         playerAnim= GetComponent<Animator>();
         playerAudio= GetComponent<AudioSource>();
-        targetPosition=transform.position;
+        targetPosition = transform.position;
         boxCollider = GetComponent<BoxCollider>();
         playerAnimator = GetComponent<Animator>();
 
@@ -44,40 +49,45 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        jumpForce =700f;
-        if(Input.GetKeyDown(KeyCode.UpArrow) && isOnGround==true && gameManager.isGameActive)
+         if (gameManager.isGameActive)
         {
+            HandleSwipeInput();
+            MoveToTargetPosition();
+        }
+
+        // if(Input.GetKeyDown(KeyCode.UpArrow) && isOnGround==true && gameManager.isGameActive)
+        // {
             
-            playerRb.AddForce(Vector3.up* 700, ForceMode.Impulse); 
-            isOnGround= false;
-            isRolling= false;
-            playerAudio.PlayOneShot(jumpSound);
-            trailEffect.Stop();
-            playerAnim.SetTrigger("Jump_trig");
-        }
-        if(Input.GetKeyDown(KeyCode.UpArrow) && isOnGround==true && gameManager.isGameActive && isRolling==true )
-        {
-            playerAnim.SetTrigger("Jump_mid_roll_trig");
-            playerRb.AddForce(Vector3.up* 700, ForceMode.Impulse); 
-            playerAudio.PlayOneShot(jumpSound);
-            isOnGround= false;
-            isRolling =false;
+        //     playerRb.AddForce(Vector3.up* 700, ForceMode.Impulse); 
+        //     isOnGround= false;
+        //     isRolling= false;
+        //     playerAudio.PlayOneShot(jumpSound);
+        //     trailEffect.Stop();
+        //     playerAnim.SetTrigger("Jump_trig");
+        // }
+        // if(Input.GetKeyDown(KeyCode.UpArrow) && isOnGround==true && gameManager.isGameActive && isRolling==true )
+        // {
+        //     playerAnim.SetTrigger("Jump_mid_roll_trig");
+        //     playerRb.AddForce(Vector3.up* 700, ForceMode.Impulse); 
+        //     playerAudio.PlayOneShot(jumpSound);
+        //     isOnGround= false;
+        //     isRolling =false;
                
-        }
-        if(Input.GetKeyDown(KeyCode.DownArrow) && isOnGround==true && gameManager.isGameActive)
-        {
-            trailEffect.Stop();
-            playerAnim.SetTrigger("Roll_trig");
-            isRolling=true;
-        }
+        // }
+        // if(Input.GetKeyDown(KeyCode.DownArrow) && isOnGround==true && gameManager.isGameActive)
+        // {
+        //     trailEffect.Stop();
+        //     playerAnim.SetTrigger("Roll_trig");
+        //     isRolling=true;
+        // }
     
-         if(Input.GetKeyDown(KeyCode.DownArrow) && isOnGround==false && isRolling==false && gameManager.isGameActive)
-        {
-            trailEffect.Stop();
-            playerRb.AddForce(Vector3.down* jumpForce, ForceMode.Impulse);
-            playerAnim.SetTrigger("Roll_mid_air_trig");
-            isRolling=true;
-        }
+        //  if(Input.GetKeyDown(KeyCode.DownArrow) && isOnGround==false && isRolling==false && gameManager.isGameActive)
+        // {
+        //     trailEffect.Stop();
+        //     playerRb.AddForce(Vector3.down* jumpForce, ForceMode.Impulse);
+        //     playerAnim.SetTrigger("Roll_mid_air_trig");
+        //     isRolling=true;
+        // }
         
          if (playerAnimator.GetCurrentAnimatorStateInfo(3).IsName("Roll"))
         {
@@ -93,17 +103,110 @@ public class PlayerController : MonoBehaviour
         }
         
             // Detect lane change input
-            if (Input.GetKeyDown(KeyCode.LeftArrow ) || Input.GetKeyDown(KeyCode.A ))
-            {
-                ChangeLane(-1); // Move to the left lane
-            }
-            else if (Input.GetKeyDown(KeyCode.RightArrow ) || Input.GetKeyDown(KeyCode.D ))
-            {
-                ChangeLane(1); // Move to the right lane
-            }
-        Vector3 newPosition = Vector3.Lerp(transform.position, targetPosition, moveSpeed * Time.deltaTime);
-        transform.position = new Vector3(newPosition.x, transform.position.y, newPosition.z);        
+            // if (Input.GetKeyDown(KeyCode.LeftArrow ) || Input.GetKeyDown(KeyCode.A ))
+            // {
+            //     ChangeLane(-1); // Move to the left lane
+            // }
+            // else if (Input.GetKeyDown(KeyCode.RightArrow ) || Input.GetKeyDown(KeyCode.D ))
+            // {
+            //     ChangeLane(1); // Move to the right lane
+            // }
+               
     }
+
+    void HandleSwipeInput()
+    {
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            switch (touch.phase)
+            {
+                case TouchPhase.Began:
+                    startTouchPosition = touch.position;
+                    isTouching = true;
+                    break;
+
+                case TouchPhase.Ended:
+                    if (isTouching)
+                {
+                    endTouchPosition = touch.position;
+                    Vector2 swipeDirection = endTouchPosition - startTouchPosition;
+
+                    if (swipeDirection.magnitude > swipeThreshold)
+                    {
+                        if (Mathf.Abs(swipeDirection.x) > Mathf.Abs(swipeDirection.y))
+                        {
+                            if (swipeDirection.x > 0)
+                            {
+                                // Swipe Right
+                                ChangeLane(1);
+                            }
+                            else
+                            {
+                                // Swipe Left
+                                ChangeLane(-1);
+                            }
+                        }
+                        else
+                        {
+                            if (swipeDirection.y > 0)
+                            {
+                                // Swipe Up
+                                HandleJump();
+                            }
+                            else
+                            {
+                                // Swipe Down
+                                HandleRoll();
+                            }
+                        }
+                    }
+                }
+                isTouching = false; // Reset the touch flag
+                break;
+            }
+        }
+    }
+    void HandleJump()
+    {
+        if (isOnGround)
+        {
+            playerRb.AddForce(Vector3.up * 700, ForceMode.Impulse);
+            isOnGround = false;
+            isRolling = false;
+            playerAudio.PlayOneShot(jumpSound);
+            trailEffect.Stop();
+
+            if (isRolling)
+            {
+                playerAnim.SetTrigger("Jump_mid_roll_trig");
+            }
+            else
+            {
+                playerAnim.SetTrigger("Jump_trig");
+            }
+        }
+    }
+
+    void HandleRoll()
+    {
+        if (isOnGround)
+        {
+            playerAnim.SetTrigger("Roll_trig");
+            isRolling = true;
+            trailEffect.Stop();
+        }
+        else if (!isRolling)
+        {
+            playerRb.AddForce(Vector3.down * jumpForce, ForceMode.Impulse);
+            playerAnim.SetTrigger("Roll_mid_air_trig");
+            isRolling = true;
+            trailEffect.Stop();
+        }
+    }
+
+
     void ChangeLane(int direction)
     {
         // Update the lane index
@@ -114,6 +217,11 @@ public class PlayerController : MonoBehaviour
 
         targetPosition=new Vector3(currentLane*laneDistance,transform.position.y,transform.position.z);
         
+    }
+    void MoveToTargetPosition()
+    {
+        Vector3 newPosition = Vector3.Lerp(transform.position, targetPosition, moveSpeed * Time.deltaTime);
+        transform.position = new Vector3(newPosition.x, transform.position.y, newPosition.z);
     }
       
     private void OnCollisionEnter(Collision collision) {
